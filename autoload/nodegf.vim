@@ -54,11 +54,15 @@ function! s:GetLocalFilename(dirname, pathname)
   let base_path = fnamemodify(base, ":h")
   let base_name = fnamemodify(base, ":t")
   let joined_exts = join(s:nodegf_file_exts, ",")
-  let glob_pattern = base_name."{$,".joined_exts.",/index{".joined_exts."}}"
-  let globs = globpath(base_path, glob_pattern)
-  echom globs
+  let glob_pattern = base_name."{,".joined_exts.",/index{".joined_exts."}}"
+  let globs = split(globpath(base_path, glob_pattern))
+
+  " Remove directory from result list.
+  if len(globs) > 0 && globs[0][-1:] ==# "/"
+    let globs = globs[1:]
+  end
   if len(globs) > 0
-    return split(globs)[0]
+    return globs[0]
   endif
   return v:false
 endfunction
