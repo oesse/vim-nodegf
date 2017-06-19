@@ -1,3 +1,5 @@
+let s:nodegf_file_exts = [".js", ".jsx", ".coffee"]
+
 function! nodegf#GoToNodeModule()
   let pathname = s:GetImportedFilePath()
   " no path to follow found
@@ -49,12 +51,14 @@ endfunction
 function! s:GetLocalFilename(dirname, pathname)
   " resolve file imports
   let base = resolve(fnamemodify(a:dirname . "/" . a:pathname, ":~:."))
-  if filereadable(base)
-    return base
-  elseif filereadable(base.".js")
-    return base.".js"
-  elseif filereadable(base."/index.js")
-    return base."/index.js"
+  let base_path = fnamemodify(base, ":h")
+  let base_name = fnamemodify(base, ":t")
+  let joined_exts = join(s:nodegf_file_exts, ",")
+  let glob_pattern = base_name."{$,".joined_exts.",/index{".joined_exts."}}"
+  let globs = globpath(base_path, glob_pattern)
+  echom globs
+  if len(globs) > 0
+    return split(globs)[0]
   endif
   return v:false
 endfunction
@@ -78,4 +82,3 @@ function! s:GetNpmRoot(pathname)
   endwhile
   return current_dir
 endfunction
-
