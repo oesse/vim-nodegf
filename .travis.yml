@@ -1,0 +1,35 @@
+language: node_js
+node_js:
+  - 6
+
+env:
+  global:
+    - DEPS=$HOME/deps
+    - PATH=$DEPS/bin:$PATH
+  matrix:
+    - ENV=neovim
+    - ENV=vim8
+
+before_install: |
+  if [ "$ENV" == "neovim" ]; then
+  # https://github.com/neovim/bot-ci#nightly-builds
+    eval "$(curl -Ss https://raw.githubusercontent.com/neovim/bot-ci/master/scripts/travis-setup.sh) nightly-x64"
+    mkdir -p ${DEPS}/bin
+    ln -s $(which nvim) ${DEPS}/bin/vim
+    export VADER_OUTPUT_FILE=/dev/stderr
+    return
+  fi
+
+  # Build vim8 from sources
+  git clone --depth 1 https://github.com/vim/vim
+  cd vim
+  ./configure --prefix=$DEPS --with-features=huge --disable-gui
+  make
+  make install
+  cd -
+
+before_script:
+  - git clone https://github.com/junegunn/vader.vim.git
+
+script:
+  - ./test/run-on-travis
