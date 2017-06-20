@@ -1,7 +1,7 @@
 let s:nodegf_file_exts = [".js", ".jsx", ".coffee"]
 
 function! nodegf#GoToNodeModule()
-  let pathname = s:GetImportedFilePath()
+  let pathname = nodegf#GetImportedFilePath()
   " no path to follow found
   if empty(pathname)
     " fallback to default behaviour
@@ -9,7 +9,7 @@ function! nodegf#GoToNodeModule()
     return
   endif
 
-  let filename = s:GetSourceFilename(pathname)
+  let filename = nodegf#GetSourceFilename(expand("%:h"), pathname)
   if filename == v:false
     echoerr "No import found"
     return
@@ -23,7 +23,7 @@ function! nodegf#GoToNodeModule()
   execute "edit ".filename
 endfunction
 
-function! s:GetImportedFilePath()
+function! nodegf#GetImportedFilePath()
   let save_cursor = getcurpos()
   let save_a = @a
   normal! 0
@@ -39,11 +39,11 @@ function! s:GetImportedFilePath()
   return result
 endfunction
 
-function! s:GetSourceFilename(pathname)
+function! nodegf#GetSourceFilename(cwd, pathname)
   if strpart(a:pathname, 0, 1) ==# "."
-    return s:GetLocalFilename(expand("%:h"), a:pathname)
+    return s:GetLocalFilename(a:cwd, a:pathname)
   endif
-  return s:GetNpmFilename(a:pathname)
+  return s:GetNpmFilename(a:cwd, a:pathname)
 endfunction
 
 " dirname: directory to use as starting point for relative lookup
@@ -55,7 +55,7 @@ function! s:GetLocalFilename(dirname, pathname)
   let base_name = fnamemodify(base, ":t")
   let joined_exts = join(s:nodegf_file_exts, ",")
   let glob_pattern = base_name."{,".joined_exts.",/index{".joined_exts."}}"
-  let globs = split(globpath(base_path, glob_pattern))
+  let globs = globpath(base_path, glob_pattern, v:true, v:true)
 
   " Remove directory from result list.
   if len(globs) > 0 && globs[0][-1:] ==# "/"
@@ -67,22 +67,28 @@ function! s:GetLocalFilename(dirname, pathname)
   return v:false
 endfunction
 
-function! s:GetNpmFilename(pathname)
-  let npm_root = s:GetNpmRoot(expand("%:h"))
+function! s:GetNpmFilename(cwd, pathname)
   let path = split(a:pathname, "/")
-  let npm_module_path = resolve(npm_root . "/node_modules/" . path[0])
+  let module_dir = s:GetModuleDir(a:cwd, path[0])
   if a:pathname =~# "/"
-    return s:GetLocalFilename(npm_module_path, join(path[1:], "/"))
+    return s:GetLocalFilename(module_dir, join(path[1:], "/"))
   endif
 
-  let entry_point = json_decode(join(readfile(npm_module_path . "/package.json"))).main
-  return s:GetLocalFilename(npm_module_path, entry_point)
+  let entry_point = json_decode(join(readfile(module_dir . "/package.json"))).main
+  return s:GetLocalFilename(module_dir, entry_point)
 endfunction
 
-function! s:GetNpmRoot(pathname)
+function! s:GetModuleDir(pathname, module)
   let current_dir = a:pathname
-  while current_dir !=# "/" && !filereadable(current_dir . "/package.json")
-    let current_dir = resolve(current_dir . "/..")
+  while current_dir !=# "/"
+    let candidate = current_dir . "/node_modules/" . a:module
+    if isdirectory(candidate)
+      return candidate
+    endif
+    let current_dir = resolve(fnamemodify(current_dir . "/..", ":p"))
   endwhile
+  if current_dir ==# "/" && !isdirectory("/node_modules/" . a:module)
+    throw "'" . a:module . "' is not installed."
+  end
   return current_dir
 endfunction

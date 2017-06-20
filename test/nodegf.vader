@@ -1,0 +1,83 @@
+Execute (setup):
+  source autoload/nodegf.vim
+  cd test/test-project
+  let project_dir = "."
+
+" ======================================================================
+Execute (GetSourceFilename()):
+
+Execute (  resolves path to js file):
+  let result = nodegf#GetSourceFilename(project_dir, "./bar")
+  AssertEqual "./bar.js", result
+
+Execute (  resolves path to index):
+  let result = nodegf#GetSourceFilename(project_dir, "./foo")
+  AssertEqual "./foo/index.js", result
+
+Execute (  resolves coffee files):
+  let result = nodegf#GetSourceFilename(project_dir, "./baz")
+  AssertEqual "./baz.coffee", result
+
+Execute (  resolves jsx files):
+  let result = nodegf#GetSourceFilename(project_dir, "./foo/bar")
+  AssertEqual "foo/bar.jsx", result
+
+Execute (  resolves file with explicit extension):
+  let result = nodegf#GetSourceFilename(project_dir, "./foo/index.js")
+  AssertEqual "foo/index.js", result
+
+Execute (  resolves relative path):
+  let result = nodegf#GetSourceFilename(project_dir . "/foo", "../bar")
+  AssertEqual "./bar.js", result
+
+Execute (  resolves npm module entry point):
+  let result = nodegf#GetSourceFilename(project_dir, "module-a")
+  AssertEqual "node_modules/module-a/index.js", result
+
+Execute (  resolves path inside npm module):
+  let result = nodegf#GetSourceFilename(project_dir, "module-b/foobar")
+  AssertEqual "node_modules/module-b/foobar.js", result
+
+Execute (  resolves npm module from inside npm module):
+  let result = nodegf#GetSourceFilename(project_dir . "/node_modules/module-a", "module-b")
+  AssertEqual "node_modules/module-b/index.js", result
+
+Execute (  resolves npm module in nested node_modules directory):
+  let result = nodegf#GetSourceFilename(project_dir . "/node_modules/module-a", "dependency-a")
+  AssertEqual "node_modules/module-a/node_modules/dependency-a/entry-point.js", result
+
+Execute (  resolves npm module from non-root directory):
+  let result = nodegf#GetSourceFilename(project_dir . "/foo", "module-a")
+  AssertEqual "node_modules/module-a/index.js", result
+
+" ======================================================================
+Execute (GetImportedFilePath()):
+
+Given javascript (  import statement with single quotes):
+  import foo from 'bar'
+
+Execute (  returns module name inside quotes):
+  let result = nodegf#GetImportedFilePath()
+  AssertEqual "bar", result
+
+Given javascript (  import statement with double quotes):
+  import foo from "bar"
+
+Execute (  returns module name inside quotes):
+  let result = nodegf#GetImportedFilePath()
+  AssertEqual "bar", result
+
+Given javascript (  require statement with single quotes):
+  const foo = require('../bar/baz')
+
+Execute (  returns required module path):
+  let result = nodegf#GetImportedFilePath()
+  AssertEqual "../bar/baz", result
+
+Given javascript (  require statement with double quotes):
+  const foo = require("../bar/baz")
+
+Execute (  returns required module path):
+  let result = nodegf#GetImportedFilePath()
+  AssertEqual "../bar/baz", result
+
